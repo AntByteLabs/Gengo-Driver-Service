@@ -1,0 +1,129 @@
+// ─── Trip & Offer state enums ─────────────────────────────────────────────────
+
+export type OfferStatus = 'pending' | 'accepted' | 'declined' | 'expired';
+
+export type TripStatus =
+  | 'MATCHED'
+  | 'ACCEPTED'
+  | 'EN_ROUTE_PICKUP'
+  | 'ARRIVED_PICKUP'
+  | 'IN_PROGRESS'
+  | 'COMPLETED'
+  | 'CANCELLED';
+
+export type DriverStatus = 'online' | 'offline' | 'on_trip';
+
+// ─── DB row shapes ─────────────────────────────────────────────────────────────
+
+export interface OfferRow {
+  id: string;
+  trip_id: string;
+  driver_id: string;
+  status: OfferStatus;
+  expires_at: Date;
+}
+
+export interface TripRow {
+  id: string;
+  rider_id: string;
+  driver_id: string | null;
+  status: TripStatus;
+  pickup_label: string;
+  pickup_lat: number;
+  pickup_lng: number;
+  dropoff_label: string;
+  dropoff_lat: number;
+  dropoff_lng: number;
+  distance_km: number;
+  fare_paisa: number;
+  payment_method: string;
+  pickup_pin: string;
+  accepted_at: Date | null;
+  arrived_at: Date | null;
+  started_at: Date | null;
+  completed_at: Date | null;
+  created_at: Date;
+  updated_at: Date;
+}
+
+export interface RiderRow {
+  id: string;
+  full_name: string;
+  phone: string;
+}
+
+export interface DriverProfileRow {
+  id: string;
+  user_id: string;
+  vehicle_type: string;
+  vehicle_plate: string | null;
+  vehicle_model: string | null;
+  license_no: string | null;
+  status: DriverStatus;
+  rating_avg: string; // pg returns NUMERIC as string
+  trip_count: number;
+  is_active: boolean;
+  created_at: Date;
+  updated_at: Date;
+}
+
+// ─── Service response types ────────────────────────────────────────────────────
+
+export interface ActiveDriverTrip {
+  tripId: string;
+  riderId: string;
+  riderName: string;
+  riderPhone: string;
+  pickup: {
+    label: string;
+    location: { lat: number; lng: number };
+  };
+  dropoff: {
+    label: string;
+    location: { lat: number; lng: number };
+  };
+  distanceKm: number;
+  estimatedFareNPR: number;
+  paymentMethod: string;
+  status: TripStatus;
+  pickupPin: string;
+  acceptedAt: number; // Unix ms
+}
+
+export interface TripStateResult {
+  tripId: string;
+  status: TripStatus;
+  arrivedAt?: number;
+  startedAt?: number;
+  farePaisa?: number;
+  completedAt?: number;
+}
+
+export interface EarningsPeriod {
+  date: string;
+  earningsPaisa: number;
+  tripCount: number;
+}
+
+export interface EarningsSummary {
+  totalPaisa: number;
+  tripCount: number;
+  periods: EarningsPeriod[];
+}
+
+export interface PaginatedDrivers {
+  items: DriverProfileRow[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+// ─── JWT payload ──────────────────────────────────────────────────────────────
+
+export interface JwtPayload {
+  sub: string; // user_id
+  driverId: string;
+  role: 'driver' | 'rider' | 'admin';
+  iat?: number;
+  exp?: number;
+}
