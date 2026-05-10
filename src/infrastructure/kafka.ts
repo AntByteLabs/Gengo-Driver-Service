@@ -1,5 +1,6 @@
 import { Kafka, Producer, logLevel } from 'kafkajs';
 import { config } from '../config.js';
+import { logger } from './logger.js';
 
 let producer: Producer | null = null;
 let kafka: Kafka | null = null;
@@ -22,7 +23,7 @@ export async function getProducer(): Promise<Producer> {
       idempotent: true,
     });
     await producer.connect();
-    console.log('[kafka] producer connected');
+    logger.info('kafka producer connected');
   }
   return producer;
 }

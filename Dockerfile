@@ -1,31 +1,58 @@
+# syntax=docker/dockerfile:1
+#
+# Build context: REPO ROOT (docker-compose.yml sets context: .).
+# Required so the @gengo/shared workspace package referenced via
+# "file:../../packages/shared" in package.json is reachable.
+
+# ── Stage 1: shared workspace package ───────────────────────────────────────
+FROM node:20-alpine AS shared-builder
+
+WORKDIR /repo/packages/shared
+
+COPY packages/shared/package.json packages/shared/package-lock.json ./
+RUN npm ci --no-audit --no-fund --ignore-scripts
+
+COPY packages/shared ./
+RUN npm run build
+
+
+# ── Stage 2: build driver-svc ───────────────────────────────────────────────
 FROM node:20-alpine AS builder
 
-WORKDIR /app
+WORKDIR /repo/services/driver-svc
 
-COPY package*.json ./
-RUN npm ci --ignore-scripts
+COPY --from=shared-builder /repo/packages/shared /repo/packages/shared
 
-COPY tsconfig.json ./
-COPY src ./src
+COPY services/driver-svc/package.json services/driver-svc/package-lock.json ./
+RUN npm ci --no-audit --no-fund --ignore-scripts
+
+COPY services/driver-svc/tsconfig.json ./
+COPY services/driver-svc/src ./src
 
 RUN npm run build
 
-# ─── production image ───────────────────────────────────────────────────────
+
+# ── Stage 3: production image ───────────────────────────────────────────────
 FROM node:20-alpine AS runner
 
 ENV NODE_ENV=production
 
-WORKDIR /app
+WORKDIR /repo/services/driver-svc
 
-COPY package*.json ./
-RUN npm ci --omit=dev --ignore-scripts && npm cache clean --force
+COPY --from=shared-builder /repo/packages/shared /repo/packages/shared
 
-COPY --from=builder /app/dist ./dist
-COPY migrations ./migrations
+COPY services/driver-svc/package.json services/driver-svc/package-lock.json ./
+RUN npm ci --omit=dev --no-audit --no-fund --ignore-scripts && npm cache clean --force
+
+COPY --from=builder /repo/services/driver-svc/dist ./dist
+COPY services/driver-svc/migrations ./migrations
 
 RUN addgroup -S gengo && adduser -S driver-svc -G gengo
 USER driver-svc
 
 EXPOSE 3004
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
+  CMD node -e "require('http').get('http://127.0.0.1:3004/health', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"
 
 CMD ["node", "dist/index.js"]

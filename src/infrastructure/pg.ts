@@ -1,5 +1,6 @@
 import { Pool, PoolClient } from 'pg';
 import { config } from '../config.js';
+import { logger } from './logger.js';
 
 let pool: Pool | null = null;
 
@@ -17,7 +18,7 @@ export function getPool(): Pool {
     });
 
     pool.on('error', (err) => {
-      console.error('[pg] pool error', err);
+      logger.error({ err }, 'pg pool error');
     });
   }
   return pool;

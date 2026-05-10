@@ -6,12 +6,13 @@ import { createApp } from './server.js';
 import { getPool, closePg } from './infrastructure/pg.js';
 import { getRedis, closeRedis } from './infrastructure/redis.js';
 import { getProducer, closeKafka } from './infrastructure/kafka.js';
+import { logger } from './infrastructure/logger.js';
 
 async function bootstrap(): Promise<void> {
   // Warm up infrastructure connections
   await Promise.all([
-    getPool().query('SELECT 1').then(() => console.log('[pg] connected')),
-    getRedis().ping().then(() => console.log('[redis] ping ok')),
+    getPool().query('SELECT 1').then(() => logger.info('pg connected')),
+    getRedis().ping().then(() => logger.info('redis ping ok')),
     getProducer(), // establishes Kafka producer connection
   ]);
 
@@ -19,23 +20,24 @@ async function bootstrap(): Promise<void> {
   const server = http.createServer(app);
 
   server.listen(config.PORT, () => {
-    console.log(
-      `[driver-svc] listening on port ${config.PORT} (${config.NODE_ENV})`,
+    logger.info(
+      { port: config.PORT, env: config.NODE_ENV },
+      'driver-svc listening',
     );
   });
 
   // ── Graceful shutdown ────────────────────────────────────────────────────
   const shutdown = async (signal: string): Promise<void> => {
-    console.log(`[driver-svc] ${signal} received — shutting down gracefully`);
+    logger.info({ signal }, 'shutdown signal received');
     server.close(async () => {
       await Promise.allSettled([closePg(), closeRedis(), closeKafka()]);
-      console.log('[driver-svc] shutdown complete');
+      logger.info('shutdown complete');
       process.exit(0);
     });
 
     // Force exit after 10s if connections are stuck
     setTimeout(() => {
-      console.error('[driver-svc] forced shutdown after timeout');
+      logger.error('forced shutdown after timeout');
       process.exit(1);
     }, 10_000).unref();
   };
@@ -44,16 +46,16 @@ async function bootstrap(): Promise<void> {
   process.on('SIGINT', () => void shutdown('SIGINT'));
 
   process.on('unhandledRejection', (reason) => {
-    console.error('[driver-svc] unhandledRejection', reason);
+    logger.error({ reason }, 'unhandledRejection');
   });
 
   process.on('uncaughtException', (err) => {
-    console.error('[driver-svc] uncaughtException', err);
+    logger.fatal({ err }, 'uncaughtException');
     process.exit(1);
   });
 }
 
 bootstrap().catch((err: unknown) => {
-  console.error('[driver-svc] failed to start', err);
+  logger.fatal({ err }, 'failed to start');
   process.exit(1);
 });
