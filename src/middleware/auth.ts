@@ -50,6 +50,8 @@ export function requireDriver(req: Request, _res: Response, next: NextFunction):
     return next(AppError.forbidden('Driver role required'));
   }
 
-  req.driver = payload;
+  // auth-svc issues `sub` (the user id) but not a separate `driverId` claim;
+  // the trip/offer routes key off req.driver.driverId, so derive it from sub.
+  req.driver = { ...payload, driverId: payload.sub };
   next();
 }

@@ -15,16 +15,14 @@ export class TripRepository {
               t.dropoff_label,
               t.dropoff_lat,
               t.dropoff_lng,
-              t.distance_km,
+              (t.distance_m::numeric / 1000) AS distance_km,
               t.fare_paisa,
-              t.payment_method,
+              t.payment_method_type AS payment_method,
               t.pickup_pin,
               t.accepted_at,
               t.arrived_at,
               t.started_at,
-              t.completed_at,
-              t.created_at,
-              t.updated_at
+              t.completed_at
          FROM trips.trips t
         WHERE t.id = $1`,
       [tripId],
@@ -44,16 +42,14 @@ export class TripRepository {
               t.dropoff_label,
               t.dropoff_lat,
               t.dropoff_lng,
-              t.distance_km,
+              (t.distance_m::numeric / 1000) AS distance_km,
               t.fare_paisa,
-              t.payment_method,
+              t.payment_method_type AS payment_method,
               t.pickup_pin,
               t.accepted_at,
               t.arrived_at,
               t.started_at,
-              t.completed_at,
-              t.created_at,
-              t.updated_at
+              t.completed_at
          FROM trips.trips t
         WHERE t.id = $1
           FOR UPDATE`,
@@ -74,7 +70,7 @@ export class TripRepository {
       completed_at: Date;
     }>,
   ): Promise<void> {
-    const setClauses: string[] = ['status = $1', 'updated_at = NOW()'];
+    const setClauses: string[] = ['status = $1'];
     const values: unknown[] = [status];
     let idx = 2;
 

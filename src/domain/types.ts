@@ -48,8 +48,6 @@ export interface TripRow {
   arrived_at: Date | null;
   started_at: Date | null;
   completed_at: Date | null;
-  created_at: Date;
-  updated_at: Date;
 }
 
 export interface RiderRow {
