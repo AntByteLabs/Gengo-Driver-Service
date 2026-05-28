@@ -25,6 +25,10 @@ const envSchema = z.object({
 
   // Admin
   ADMIN_API_KEY: z.string().min(16),
+
+  // File uploads (KYC documents)
+  UPLOAD_DIR: z.string().default('./uploads'),
+  BASE_URL: z.string().default('http://localhost:3000'),
 });
 
 function loadConfig() {

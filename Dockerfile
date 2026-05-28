@@ -47,12 +47,13 @@ RUN npm ci --omit=dev --no-audit --no-fund --ignore-scripts && npm cache clean -
 COPY --from=builder /repo/services/driver-svc/dist ./dist
 COPY services/driver-svc/migrations ./migrations
 
-RUN addgroup -S gengo && adduser -S driver-svc -G gengo
+RUN addgroup -S gengo && adduser -S driver-svc -G gengo \
+ && mkdir -p ./uploads && chown driver-svc:gengo ./uploads
 USER driver-svc
 
 EXPOSE 3004
 
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
-  CMD node -e "require('http').get('http://127.0.0.1:3004/health', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"
+  CMD node -e "require('http').get('http://127.0.0.1:3004/healthz', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"
 
 CMD ["node", "dist/index.js"]

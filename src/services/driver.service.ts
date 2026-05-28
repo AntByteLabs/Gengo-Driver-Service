@@ -6,17 +6,22 @@ import { EarningsSummary, PaginatedDrivers } from '../domain/types.js';
 import { config } from '../config.js';
 
 export class DriverService {
-  async goOffline(driverId: string): Promise<void> {
-    const driver = await driverRepository.findById(driverId);
+  async goOnline(userId: string): Promise<void> {
+    const driver = await driverRepository.findByUserId(userId);
+    if (!driver) throw AppError.notFound('Driver');
+    await driverRepository.updateStatus(driver.id, 'online');
+  }
+
+  async goOffline(userId: string): Promise<void> {
+    const driver = await driverRepository.findByUserId(userId);
     if (!driver) throw AppError.notFound('Driver');
 
-    // Remove from the GEO sorted set and set DB status
     const redis = getRedis();
     await Promise.all([
       redis
-        .zrem(config.REDIS_GEO_KEY, driverId)
+        .zrem(config.REDIS_GEO_KEY, driver.id)
         .catch((e: unknown) => console.error('[driver.service] zrem error', e)),
-      driverRepository.updateStatus(driverId, 'offline'),
+      driverRepository.updateStatus(driver.id, 'offline'),
     ]);
   }
 

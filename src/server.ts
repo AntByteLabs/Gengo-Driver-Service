@@ -1,6 +1,8 @@
+import path from 'node:path';
 import express, { Request, Response } from 'express';
 import { requestIdMiddleware } from './middleware/request-id.js';
 import { errorHandler } from './middleware/error-handler.js';
+import { config } from './config.js';
 import driverRoutes from './routes/driver.routes.js';
 import adminRoutes from './routes/admin.routes.js';
 
@@ -10,14 +12,23 @@ export function createApp(): express.Application {
   // ── Global middleware ──────────────────────────────────────────────────────
   app.use(express.json({ limit: '256kb' }));
   app.use(requestIdMiddleware);
-
-  // Disable fingerprinting headers
   app.disable('x-powered-by');
 
   // ── Health / liveness ──────────────────────────────────────────────────────
   app.get('/healthz', (_req: Request, res: Response) => {
     res.json({ status: 'ok', service: 'driver-svc', ts: Date.now() });
   });
+
+  // ── Static file serving for KYC uploads ───────────────────────────────────
+  // Files are stored in UPLOAD_DIR and served without auth so the admin panel
+  // can render them. Filenames are ULIDs, so enumeration is impractical.
+  app.use(
+    '/v1/driver/uploads',
+    express.static(path.resolve(config.UPLOAD_DIR), {
+      dotfiles: 'deny',
+      index: false,
+    }),
+  );
 
   // ── Route mounts ───────────────────────────────────────────────────────────
   app.use('/v1/driver', driverRoutes);

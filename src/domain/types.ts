@@ -13,6 +13,12 @@ export type TripStatus =
 
 export type DriverStatus = 'online' | 'offline' | 'on_trip';
 
+// ─── KYC / Approval enums ────────────────────────────────────────────────────
+
+export type ApprovalStatus = 'PENDING' | 'APPROVED' | 'SUSPENDED' | 'NEEDS_RESUBMISSION';
+export type KycDocType = 'LICENSE' | 'BLUEBOOK';
+export type KycDocStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'NEEDS_RESUBMISSION';
+
 // ─── DB row shapes ─────────────────────────────────────────────────────────────
 
 export interface OfferRow {
@@ -55,16 +61,46 @@ export interface RiderRow {
 export interface DriverProfileRow {
   id: string;
   user_id: string;
+  /** Populated only by the *WithStats queries (LEFT JOIN auth.users on
+   *  user_id). undefined on the legacy column-only paths. */
+  phone?: string | null;
+  name: string | null;
+  email: string | null;
   vehicle_type: string;
   vehicle_plate: string | null;
   vehicle_model: string | null;
   license_no: string | null;
   status: DriverStatus;
+  approval_status: ApprovalStatus;
+  suspension_reason: string | null;
   rating_avg: string; // pg returns NUMERIC as string
   trip_count: number;
   is_active: boolean;
   created_at: Date;
   updated_at: Date;
+}
+
+export interface KycDocumentRow {
+  id: string;
+  driver_id: string;
+  doc_type: KycDocType;
+  file_url: string;
+  status: KycDocStatus;
+  review_notes: string | null;
+  uploaded_at: Date;
+  reviewed_at: Date | null;
+}
+
+export interface VehicleRow {
+  id: string;
+  driver_id: string;
+  vehicle_type: string;
+  make: string | null;
+  model: string | null;
+  year: number | null;
+  plate: string | null;
+  color: string | null;
+  created_at: Date;
 }
 
 // ─── Service response types ────────────────────────────────────────────────────
@@ -116,6 +152,18 @@ export interface PaginatedDrivers {
   total: number;
   page: number;
   limit: number;
+}
+
+export interface DriverStatusSummary {
+  driverId: string;
+  approvalStatus: ApprovalStatus;
+  suspensionReason: string | null;
+  documents: {
+    docType: KycDocType;
+    status: KycDocStatus;
+    reviewNotes: string | null;
+    uploadedAt: Date;
+  }[];
 }
 
 // ─── JWT payload ──────────────────────────────────────────────────────────────
