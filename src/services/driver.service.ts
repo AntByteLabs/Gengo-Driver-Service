@@ -9,6 +9,9 @@ export class DriverService {
   async goOnline(userId: string): Promise<void> {
     const driver = await driverRepository.findByUserId(userId);
     if (!driver) throw AppError.notFound('Driver');
+    if (driver.approval_status !== 'APPROVED') {
+      throw AppError.driverNotApproved(driver.approval_status);
+    }
     await driverRepository.updateStatus(driver.id, 'online');
   }
 

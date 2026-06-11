@@ -32,6 +32,16 @@ export class OfferService {
       }
     }
 
+    // ── Approval gate ─────────────────────────────────────────────────────
+    // Offers key off the driver's user id (offer.driver_id === JWT sub), so
+    // resolve the profile by user id. An unapproved driver must never be
+    // able to accept a trip even if an offer somehow reached them.
+    const driver = await driverRepository.findByUserId(driverId);
+    if (!driver) throw AppError.notFound('Driver');
+    if (driver.approval_status !== 'APPROVED') {
+      throw AppError.driverNotApproved(driver.approval_status);
+    }
+
     // ── Atomic DB transaction ─────────────────────────────────────────────
     const result = await withTransaction(async (client) => {
       const offer = await offerRepository.lockForUpdate(client, offerId);

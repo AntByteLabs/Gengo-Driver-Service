@@ -22,11 +22,17 @@ export function createApp(): express.Application {
   // ── Static file serving for KYC uploads ───────────────────────────────────
   // Files are stored in UPLOAD_DIR and served without auth so the admin panel
   // can render them. Filenames are ULIDs, so enumeration is impractical.
+  // Content-Disposition: attachment + nosniff stop a malicious upload from
+  // ever executing as a document in the admin's browser (stored-XSS guard).
   app.use(
     '/v1/driver/uploads',
     express.static(path.resolve(config.UPLOAD_DIR), {
       dotfiles: 'deny',
       index: false,
+      setHeaders(res) {
+        res.setHeader('Content-Disposition', 'attachment');
+        res.setHeader('X-Content-Type-Options', 'nosniff');
+      },
     }),
   );
 

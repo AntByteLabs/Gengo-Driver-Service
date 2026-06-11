@@ -1,5 +1,4 @@
 import fs from 'node:fs';
-import path from 'node:path';
 import { Router, Request, Response, NextFunction } from 'express';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const multer = require('multer') as typeof import('multer');
@@ -32,6 +31,8 @@ fs.mkdirSync(config.UPLOAD_DIR, { recursive: true });
 const upload = multer({
   dest: config.UPLOAD_DIR,
   limits: { fileSize: 10 * 1024 * 1024 }, // 10 MiB
+  // Cheap early reject only — the client-supplied mimetype is NOT trusted.
+  // The real type check is the magic-byte sniff after the file is written.
   fileFilter(_req: Request, file: UploadedFile, cb: FileFilterCallback) {
     const allowed = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
     if (allowed.includes(file.mimetype)) {
@@ -41,6 +42,39 @@ const upload = multer({
     }
   },
 });
+
+// Magic-byte sniff (mirrors user-svc's avatar.service). The stored extension
+// comes exclusively from this fixed map — never from the client's
+// originalname or mimetype, which would let an attacker store e.g. x.html
+// declared as image/png (stored XSS when an admin opens it in a browser).
+const SNIFF_BYTES = 12;
+
+function sniffKycExt(buf: Buffer): '.jpg' | '.png' | '.webp' | '.pdf' | null {
+  if (buf.length < SNIFF_BYTES) return null;
+  if (buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) return '.jpg';
+  if (
+    buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47 &&
+    buf[4] === 0x0d && buf[5] === 0x0a && buf[6] === 0x1a && buf[7] === 0x0a
+  ) {
+    return '.png';
+  }
+  if (buf.toString('ascii', 0, 4) === 'RIFF' && buf.toString('ascii', 8, 12) === 'WEBP') {
+    return '.webp';
+  }
+  if (buf.toString('ascii', 0, 5) === '%PDF-') return '.pdf';
+  return null;
+}
+
+function readFileHeader(filePath: string): Buffer {
+  const buf = Buffer.alloc(SNIFF_BYTES);
+  const fd = fs.openSync(filePath, 'r');
+  try {
+    const bytesRead = fs.readSync(fd, buf, 0, SNIFF_BYTES, 0);
+    return buf.subarray(0, bytesRead);
+  } finally {
+    fs.closeSync(fd);
+  }
+}
 
 // ─── Zod schemas ──────────────────────────────────────────────────────────────
 
@@ -138,8 +172,14 @@ router.post(
 
       const { docType } = req.query as z.infer<typeof uploadDocQuery>;
 
-      // Rename the file multer wrote (no extension) to keep the extension.
-      const ext = path.extname(file.originalname).toLowerCase() || '.bin';
+      // Derive the extension from the file's magic bytes — reject anything
+      // that isn't actually a JPEG/PNG/WebP/PDF regardless of what the
+      // client claimed in mimetype/originalname.
+      const ext = sniffKycExt(readFileHeader(file.path));
+      if (!ext) {
+        fs.rmSync(file.path, { force: true });
+        throw AppError.badRequest('Unsupported file type. Upload a JPEG, PNG, WebP, or PDF.');
+      }
       const newPath = `${file.path}${ext}`;
       fs.renameSync(file.path, newPath);
 

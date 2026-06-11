@@ -7,6 +7,7 @@ export type ErrorCode =
   | 'OFFER_EXPIRED'
   | 'TRIP_STATE_INVALID'
   | 'DRIVER_NOT_FOUND'
+  | 'DRIVER_NOT_APPROVED'
   | 'INTERNAL_ERROR'
   | 'IDEMPOTENCY_CONFLICT';
 
@@ -37,6 +38,14 @@ export class AppError extends Error {
 
   static badRequest(message: string, field?: string): AppError {
     return new AppError('BAD_REQUEST', message, 400, field);
+  }
+
+  static driverNotApproved(approvalStatus: string): AppError {
+    return new AppError(
+      'DRIVER_NOT_APPROVED',
+      `Driver account is not approved (status: ${approvalStatus}). Complete KYC and wait for approval before going online or taking trips.`,
+      403,
+    );
   }
 
   static offerTaken(): AppError {

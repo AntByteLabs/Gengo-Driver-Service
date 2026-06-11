@@ -12,7 +12,9 @@ export function getPool(): Pool {
       user: config.PG_USER,
       password: config.PG_PASSWORD,
       database: config.PG_DATABASE,
-      max: 20,
+      // 10, matching the other TS services — the per-service pool maxima
+      // must sum under Postgres max_connections=100 across the fleet.
+      max: 10,
       idleTimeoutMillis: 30_000,
       connectionTimeoutMillis: 5_000,
     });
