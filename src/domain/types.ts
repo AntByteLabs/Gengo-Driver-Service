@@ -156,6 +156,11 @@ export interface DriverStatusSummary {
   driverId: string;
   approvalStatus: ApprovalStatus;
   suspensionReason: string | null;
+  // Registered vehicle — lets the app restore it after a reinstall (it
+  // previously kept the vehicle only in device-local storage).
+  vehicleType: string;
+  plate: string | null;
+  model: string | null;
   documents: {
     docType: KycDocType;
     status: KycDocStatus;

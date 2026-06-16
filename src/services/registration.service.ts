@@ -89,6 +89,9 @@ export class RegistrationService {
       driverId,
       approvalStatus: driver.approval_status,
       suspensionReason: driver.suspension_reason,
+      vehicleType: driver.vehicle_type,
+      plate: driver.vehicle_plate ?? null,
+      model: driver.vehicle_model ?? null,
       documents: docs.map((d) => ({
         docType: d.doc_type,
         status: d.status,
