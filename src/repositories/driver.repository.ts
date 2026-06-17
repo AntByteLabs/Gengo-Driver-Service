@@ -234,6 +234,7 @@ export class DriverRepository {
            FROM trips.ratings r
            JOIN trips.trips t ON t.id = r.trip_id
           WHERE t.driver_id = p.user_id
+            AND r.direction = 'rider_to_driver'
        ) rs ON TRUE
        WHERE p.id = $1`,
       [driverId],
