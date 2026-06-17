@@ -80,7 +80,10 @@ export class RegistrationService {
   }
 
   async getStatus(driverId: string): Promise<DriverStatusSummary> {
-    const driver = await driverRepository.findById(driverId);
+    // findByIdWithStats computes trip_count + rating_avg LIVE from completed
+    // trips / ratings, so the account screen reflects real activity instead of
+    // the stored aggregate columns (which weren't being kept current).
+    const driver = await driverRepository.findByIdWithStats(driverId);
     if (!driver) throw AppError.notFound('Driver');
 
     const docs = await kycRepository.findByDriver(driverId);
