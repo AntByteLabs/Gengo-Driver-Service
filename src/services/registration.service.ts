@@ -92,6 +92,8 @@ export class RegistrationService {
       vehicleType: driver.vehicle_type,
       plate: driver.vehicle_plate ?? null,
       model: driver.vehicle_model ?? null,
+      ratingAvg: Number(driver.rating_avg ?? 5),
+      tripCount: driver.trip_count ?? 0,
       documents: docs.map((d) => ({
         docType: d.doc_type,
         status: d.status,

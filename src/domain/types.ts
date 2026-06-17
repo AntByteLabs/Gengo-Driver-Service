@@ -161,6 +161,9 @@ export interface DriverStatusSummary {
   vehicleType: string;
   plate: string | null;
   model: string | null;
+  // Driver's aggregate rating + completed-trip count (for the account screen).
+  ratingAvg: number;
+  tripCount: number;
   documents: {
     docType: KycDocType;
     status: KycDocStatus;
