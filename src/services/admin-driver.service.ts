@@ -52,31 +52,45 @@ export class AdminDriverService {
   }
 
   async getDriverFull(driverId: string): Promise<DriverFull> {
-    const [profile, vehicle, kycDocuments] = await Promise.all([
-      driverRepository.findByIdWithStats(driverId),
-      kycRepository.findVehicleByDriver(driverId),
-      kycRepository.findByDriver(driverId),
-    ]);
+    // `driverId` may be the driver profile id OR the user id — trip rows
+    // reference the driver by user id, so "View driver profile" from a trip
+    // passes that. Resolve the profile by either, then use its real id for the
+    // vehicle / KYC lookups (which are keyed on the profile id).
+    let profile = await driverRepository.findByIdWithStats(driverId);
+    if (!profile) {
+      const byUser = await driverRepository.findByUserId(driverId);
+      if (byUser) profile = await driverRepository.findByIdWithStats(byUser.id);
+    }
     if (!profile) throw AppError.notFound('Driver');
+    const [vehicle, kycDocuments] = await Promise.all([
+      kycRepository.findVehicleByDriver(profile.id),
+      kycRepository.findByDriver(profile.id),
+    ]);
     return { profile, vehicle, kycDocuments };
   }
 
+  /** Resolve a driver profile id from either a profile id or a user id. */
+  private async resolveProfileId(idOrUserId: string): Promise<string> {
+    const byId = await driverRepository.findById(idOrUserId);
+    if (byId) return byId.id;
+    const byUser = await driverRepository.findByUserId(idOrUserId);
+    if (byUser) return byUser.id;
+    throw AppError.notFound('Driver');
+  }
+
   async approveDriver(driverId: string): Promise<void> {
-    const driver = await driverRepository.findById(driverId);
-    if (!driver) throw AppError.notFound('Driver');
-    await driverRepository.updateApprovalStatus(driverId, 'APPROVED', null);
+    const id = await this.resolveProfileId(driverId);
+    await driverRepository.updateApprovalStatus(id, 'APPROVED', null);
   }
 
   async suspendDriver(driverId: string, reason: string): Promise<void> {
-    const driver = await driverRepository.findById(driverId);
-    if (!driver) throw AppError.notFound('Driver');
-    await driverRepository.updateApprovalStatus(driverId, 'SUSPENDED', reason || null);
+    const id = await this.resolveProfileId(driverId);
+    await driverRepository.updateApprovalStatus(id, 'SUSPENDED', reason || null);
   }
 
   async unsuspendDriver(driverId: string): Promise<void> {
-    const driver = await driverRepository.findById(driverId);
-    if (!driver) throw AppError.notFound('Driver');
-    await driverRepository.updateApprovalStatus(driverId, 'APPROVED', null);
+    const id = await this.resolveProfileId(driverId);
+    await driverRepository.updateApprovalStatus(id, 'APPROVED', null);
   }
 
   async reviewDocument(params: {
