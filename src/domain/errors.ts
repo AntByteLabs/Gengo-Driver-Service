@@ -8,6 +8,7 @@ export type ErrorCode =
   | 'TRIP_STATE_INVALID'
   | 'DRIVER_NOT_FOUND'
   | 'DRIVER_NOT_APPROVED'
+  | 'DRIVER_DEBT_BLOCKED'
   | 'INTERNAL_ERROR'
   | 'IDEMPOTENCY_CONFLICT';
 
@@ -44,6 +45,16 @@ export class AppError extends Error {
     return new AppError(
       'DRIVER_NOT_APPROVED',
       `Driver account is not approved (status: ${approvalStatus}). Complete KYC and wait for approval before going online or taking trips.`,
+      403,
+    );
+  }
+
+  static driverDebtBlocked(debtPaisa: number, limitPaisa: number): AppError {
+    const debt = Math.round(debtPaisa / 100);
+    const limit = Math.round(limitPaisa / 100);
+    return new AppError(
+      'DRIVER_DEBT_BLOCKED',
+      `You owe the platform Rs ${debt}, over your Rs ${limit} limit. Settle your balance to go back online.`,
       403,
     );
   }
